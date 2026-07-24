@@ -28,9 +28,7 @@ pipeline {
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login \
-                        -u "$DOCKER_USER" \
-                        --password-stdin
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
                 }
             }
@@ -42,11 +40,21 @@ pipeline {
             }
         }
 
+        stage('Deploy to Amazon EKS') {
+            steps {
+                sh '''
+                    kubectl apply -f deployment.yaml
+                    kubectl apply -f service.yaml
+                    kubectl rollout restart deployment portfolio-deployment
+                    kubectl rollout status deployment portfolio-deployment
+                '''
+            }
+        }
     }
 
     post {
         success {
-            echo 'Image successfully pushed to Docker Hub!'
+            echo 'Pipeline completed successfully! Application deployed to Amazon EKS.'
         }
 
         failure {
