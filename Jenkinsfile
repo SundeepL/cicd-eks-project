@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "sundeep04/portfolio"
+        IMAGE_TAG = "latest"
+    }
+
     stages {
 
         stage('Checkout Source Code') {
@@ -11,13 +16,29 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t portfolio:v1 .'
+                sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
             }
         }
 
-        stage('Verify Docker Image') {
+        stage('Login to Docker Hub') {
             steps {
-                sh 'docker images'
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
+                    '''
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
             }
         }
 
@@ -25,7 +46,7 @@ pipeline {
 
     post {
         success {
-            echo 'Docker image built successfully!'
+            echo 'Image successfully pushed to Docker Hub!'
         }
 
         failure {
